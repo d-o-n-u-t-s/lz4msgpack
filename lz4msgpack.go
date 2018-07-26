@@ -20,6 +20,7 @@ const (
 	offsetLength         = 11
 )
 
+// Marshal returns bytes that is the MessagePack encoded and lz4 compressed.
 func Marshal(v ...interface{}) ([]byte, error) {
 	data, err := msgpack.Marshal(v...)
 	if err != nil {
@@ -40,6 +41,9 @@ func Marshal(v ...interface{}) ([]byte, error) {
 	return buf[:offsetLength+length], err
 }
 
+// Unmarshal decodes the MessagePack-encoded data and stores the result
+// in the value pointed to by v.
+// In case of data compressed by lz4, it will be uncompressed before decode.
 func Unmarshal(data []byte, v ...interface{}) error {
 	if data[offsetCodeExt32] != msgpackCodeExt32 || data[offsetCodeInt32] != extCodeLz4 {
 		return msgpack.Unmarshal(data, v...)
