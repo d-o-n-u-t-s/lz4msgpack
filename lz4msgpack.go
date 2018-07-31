@@ -1,6 +1,7 @@
 package lz4msgpack
 
 import (
+	"bytes"
 	"encoding/binary"
 
 	"github.com/pierrec/lz4"
@@ -26,9 +27,25 @@ func Marshal(v ...interface{}) ([]byte, error) {
 	if err != nil {
 		return data, err
 	}
+	return compress(data)
+}
+
+// MarshalAsArray returns bytes as array format.
+func MarshalAsArray(v ...interface{}) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := msgpack.NewEncoder(&buf).StructAsArray(true)
+	err := enc.Encode(v...)
+	if err != nil {
+		return buf.Bytes(), err
+	}
+	return compress(buf.Bytes())
+}
+
+// compress by lz4
+func compress(data []byte) ([]byte, error) {
 	buf := make([]byte, offsetLength+lz4.CompressBlockBound(len(data)))
 	length, err := lz4.CompressBlockHC(data, buf[offsetLength:], 0)
-	if length == 0 || len(data) <= length+offsetLength {
+	if err != nil || length == 0 || len(data) <= length+offsetLength {
 		return data, err
 	}
 
