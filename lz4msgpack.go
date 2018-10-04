@@ -15,8 +15,8 @@ const (
 
 	offsetCodeExt32      = 0
 	offsetExtSize        = 1
-	offsetCodeInt32      = 5
-	offsetCodeLz4        = 6
+	offsetCodeLz4        = 5
+	offsetCodeInt32      = 6
 	offsetUncompressSize = 7
 	offsetLength         = 11
 )
@@ -50,9 +50,9 @@ func compress(data []byte) ([]byte, error) {
 	}
 
 	buf[offsetCodeExt32] = msgpackCodeExt32
-	binary.BigEndian.PutUint32(buf[offsetExtSize:offsetCodeInt32], (uint32)(length+offsetCodeInt32))
-	buf[offsetCodeInt32] = extCodeLz4
-	buf[offsetCodeLz4] = msgpackCodeInt32
+	binary.BigEndian.PutUint32(buf[offsetExtSize:offsetCodeLz4], (uint32)(length+offsetCodeLz4))
+	buf[offsetCodeLz4] = extCodeLz4
+	buf[offsetCodeInt32] = msgpackCodeInt32
 	binary.BigEndian.PutUint32(buf[offsetUncompressSize:offsetLength], (uint32)(len(data)))
 
 	return buf[:offsetLength+length], err
@@ -62,7 +62,7 @@ func compress(data []byte) ([]byte, error) {
 // in the value pointed to by v.
 // In case of data compressed by lz4, it will be uncompressed before decode.
 func Unmarshal(data []byte, v ...interface{}) error {
-	if data[offsetCodeExt32] != msgpackCodeExt32 || data[offsetCodeInt32] != extCodeLz4 {
+	if data[offsetCodeExt32] != msgpackCodeExt32 || data[offsetCodeLz4] != extCodeLz4 {
 		return msgpack.Unmarshal(data, v...)
 	}
 	buf := make([]byte, binary.BigEndian.Uint32(data[offsetUncompressSize:offsetLength]))
