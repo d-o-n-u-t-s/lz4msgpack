@@ -44,8 +44,7 @@ func MarshalAsArray(v ...interface{}) ([]byte, error) {
 // compress by lz4
 func compress(data []byte) ([]byte, error) {
 	buf := make([]byte, offsetLength+lz4.CompressBlockBound(len(data)))
-	var ht [1 << 16]int
-	length, err := lz4.CompressBlock(data, buf[offsetLength:], ht[:])
+	length, err := lz4.CompressBlockHC(data, buf[offsetLength:], 0)
 	if err != nil || length == 0 || len(data) <= length+offsetLength {
 		return data, err
 	}
