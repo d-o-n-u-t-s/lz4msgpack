@@ -1,12 +1,11 @@
-package lz4msgpack
+package lz4msgpack_test
 
 import (
 	"reflect"
 	"testing"
 
-	"github.com/vmihailenco/msgpack"
-
 	"github.com/d-o-n-u-t-s/lz4msgpack"
+	"github.com/vmihailenco/msgpack"
 )
 
 func Test(t *testing.T) {
