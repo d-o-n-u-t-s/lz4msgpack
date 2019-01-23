@@ -22,8 +22,8 @@ const (
 )
 
 // Marshal returns bytes that is the MessagePack encoded and lz4 compressed.
-func Marshal(v ...interface{}) ([]byte, error) {
-	data, err := msgpack.Marshal(v...)
+func Marshal(v interface{}) ([]byte, error) {
+	data, err := msgpack.Marshal(v)
 	if err != nil {
 		return data, err
 	}
@@ -31,10 +31,10 @@ func Marshal(v ...interface{}) ([]byte, error) {
 }
 
 // MarshalAsArray returns bytes as array format.
-func MarshalAsArray(v ...interface{}) ([]byte, error) {
+func MarshalAsArray(v interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := msgpack.NewEncoder(&buf).StructAsArray(true)
-	err := enc.Encode(v...)
+	err := enc.Encode(v)
 	if err != nil {
 		return buf.Bytes(), err
 	}
@@ -61,14 +61,14 @@ func compress(data []byte) ([]byte, error) {
 // Unmarshal decodes the MessagePack-encoded data and stores the result
 // in the value pointed to by v.
 // In case of data compressed by lz4, it will be uncompressed before decode.
-func Unmarshal(data []byte, v ...interface{}) error {
+func Unmarshal(data []byte, v interface{}) error {
 	if data[offsetCodeExt32] != msgpackCodeExt32 || data[offsetCodeLz4] != extCodeLz4 {
-		return msgpack.Unmarshal(data, v...)
+		return msgpack.Unmarshal(data, v)
 	}
 	buf := make([]byte, binary.BigEndian.Uint32(data[offsetUncompressSize:offsetLength]))
 	_, err := lz4.UncompressBlock(data[offsetLength:], buf)
 	if err != nil {
 		return err
 	}
-	return msgpack.Unmarshal(buf, v...)
+	return msgpack.Unmarshal(buf, v)
 }
