@@ -26,7 +26,6 @@ func Test(t *testing.T) {
 		b, _ := marshaler(&data)
 		t.Logf("%s: %d", name, len(b))
 		var data1 Data
-		//lz4msgpack.Unmarshal(b, &data1)
 		unmarshaler(b, &data1)
 		if !reflect.DeepEqual(data, data1) {
 			t.Fatal(name + " Error")
