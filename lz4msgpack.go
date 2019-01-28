@@ -1,11 +1,10 @@
 package lz4msgpack
 
 import (
-	"bytes"
 	"encoding/binary"
 
 	"github.com/pierrec/lz4"
-	"github.com/vmihailenco/msgpack"
+	"github.com/shamaton/msgpack"
 )
 
 const (
@@ -23,7 +22,7 @@ const (
 
 // Marshal returns bytes that is the MessagePack encoded and lz4 compressed.
 func Marshal(v interface{}) ([]byte, error) {
-	data, err := msgpack.Marshal(v)
+	data, err := msgpack.Encode(v)
 	if err != nil {
 		return data, err
 	}
@@ -32,13 +31,11 @@ func Marshal(v interface{}) ([]byte, error) {
 
 // MarshalAsArray returns bytes as array format.
 func MarshalAsArray(v interface{}) ([]byte, error) {
-	var buf bytes.Buffer
-	enc := msgpack.NewEncoder(&buf).StructAsArray(true)
-	err := enc.Encode(v)
+	data, err := msgpack.EncodeStructAsArray(v)
 	if err != nil {
-		return buf.Bytes(), err
+		return data, err
 	}
-	return compress(buf.Bytes())
+	return compress(data)
 }
 
 // compress by lz4
@@ -63,12 +60,12 @@ func compress(data []byte) ([]byte, error) {
 // In case of data compressed by lz4, it will be uncompressed before decode.
 func Unmarshal(data []byte, v interface{}) error {
 	if data[offsetCodeExt32] != msgpackCodeExt32 || data[offsetCodeLz4] != extCodeLz4 {
-		return msgpack.Unmarshal(data, v)
+		return msgpack.Decode(data, v)
 	}
 	buf := make([]byte, binary.BigEndian.Uint32(data[offsetUncompressSize:offsetLength]))
 	_, err := lz4.UncompressBlock(data[offsetLength:], buf)
 	if err != nil {
 		return err
 	}
-	return msgpack.Unmarshal(buf, v)
+	return msgpack.Decode(buf, v)
 }
