@@ -34,5 +34,5 @@ func Test(t *testing.T) {
 
 	tester("          msgpack.Marshal", msgpack.Encode, msgpack.Decode)
 	tester("       lz4msgpack.Marshal", lz4msgpack.Marshal, lz4msgpack.Unmarshal)
-	tester("lz4msgpack.MarshalAsArray", lz4msgpack.MarshalAsArray, lz4msgpack.Unmarshal)
+	tester("lz4msgpack.MarshalAsArray", lz4msgpack.MarshalAsArray, lz4msgpack.UnmarshalAsArray)
 }

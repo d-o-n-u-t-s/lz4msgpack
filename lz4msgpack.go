@@ -69,3 +69,18 @@ func Unmarshal(data []byte, v interface{}) error {
 	}
 	return msgpack.Decode(buf, v)
 }
+
+// UnmarshalAsArray decodes the array format MessagePack-encoded data and stores the result
+// in the value pointed to by v.
+// In case of data compressed by lz4, it will be uncompressed before decode.
+func UnmarshalAsArray(data []byte, v interface{}) error {
+	if data[offsetCodeExt32] != msgpackCodeExt32 || data[offsetCodeLz4] != extCodeLz4 {
+		return msgpack.DecodeStructAsArray(data, v)
+	}
+	buf := make([]byte, binary.BigEndian.Uint32(data[offsetUncompressSize:offsetLength]))
+	_, err := lz4.UncompressBlock(data[offsetLength:], buf)
+	if err != nil {
+		return err
+	}
+	return msgpack.DecodeStructAsArray(buf, v)
+}
