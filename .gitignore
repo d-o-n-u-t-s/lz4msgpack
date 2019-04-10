@@ -4,3 +4,4 @@ vendor
 # IDE
 .project
 .settings
+.vscode
