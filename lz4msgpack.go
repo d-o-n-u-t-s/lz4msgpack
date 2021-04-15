@@ -3,8 +3,8 @@ package lz4msgpack
 import (
 	"encoding/binary"
 
-	"github.com/pierrec/lz4"
-	"github.com/shamaton/msgpack"
+	"github.com/pierrec/lz4/v4"
+	"github.com/shamaton/msgpack/v2"
 )
 
 const (
@@ -22,16 +22,16 @@ const (
 
 // Marshal returns bytes that is the MessagePack encoded and lz4 compressed.
 func Marshal(v interface{}) ([]byte, error) {
-	return marshal(v, msgpack.Encode)
+	data, err := msgpack.Marshal(v)
+	if err != nil {
+		return data, err
+	}
+	return compress(data)
 }
 
 // MarshalAsArray returns bytes as array format that is the MessagePack encoded and lz4 compressed.
 func MarshalAsArray(v interface{}) ([]byte, error) {
-	return marshal(v, msgpack.EncodeStructAsArray)
-}
-
-func marshal(v interface{}, marshaler func(interface{}) ([]byte, error)) ([]byte, error) {
-	data, err := marshaler(v)
+	data, err := msgpack.MarshalAsArray(v)
 	if err != nil {
 		return data, err
 	}
@@ -41,7 +41,7 @@ func marshal(v interface{}, marshaler func(interface{}) ([]byte, error)) ([]byte
 // compress by lz4
 func compress(data []byte) ([]byte, error) {
 	buf := make([]byte, offsetLength+lz4.CompressBlockBound(len(data)))
-	length, err := lz4.CompressBlockHC(data, buf[offsetLength:], 0)
+	length, err := lz4.CompressBlockHC(data, buf[offsetLength:], 0, nil, nil)
 	if err != nil || length == 0 || len(data) <= length+offsetLength {
 		return data, err
 	}
@@ -59,14 +59,14 @@ func compress(data []byte) ([]byte, error) {
 // in the value pointed to by v.
 // In case of data compressed by lz4, it will be uncompressed before decode.
 func Unmarshal(data []byte, v interface{}) error {
-	return unmarshal(data, v, msgpack.Decode)
+	return unmarshal(data, v, msgpack.Unmarshal)
 }
 
 // UnmarshalAsArray decodes the array format MessagePack-encoded data and stores the result
 // in the value pointed to by v.
 // In case of data compressed by lz4, it will be uncompressed before decode.
 func UnmarshalAsArray(data []byte, v interface{}) error {
-	return unmarshal(data, v, msgpack.DecodeStructAsArray)
+	return unmarshal(data, v, msgpack.UnmarshalAsArray)
 }
 
 func unmarshal(data []byte, v interface{}, unmarshaler func([]byte, interface{}) error) error {
