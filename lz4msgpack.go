@@ -76,10 +76,11 @@ func unmarshal(data []byte, v interface{}, unmarshaler func([]byte, interface{})
 	if data[typeCodeOffset] != extCodeLz4 {
 		return unmarshaler(data, v)
 	}
-	bufStartOffset := typeCodeOffset + 2
-	buffEndOffset := bufStartOffset + 4
-	buf := make([]byte, binary.BigEndian.Uint32(data[bufStartOffset:buffEndOffset]))
-	_, err := lz4.UncompressBlock(data[buffEndOffset:], buf)
+	// typecode,messagePackCode:int32,dataLength(int32) で入ってる
+	lz4DataLengthOffset := typeCodeOffset + 2
+	lz4DataLengthEndOffset := lz4DataLengthOffset + 4
+	buf := make([]byte, binary.BigEndian.Uint32(data[lz4DataLengthOffset:lz4DataLengthEndOffset]))
+	_, err := lz4.UncompressBlock(data[lz4DataLengthEndOffset:], buf)
 	if err != nil {
 		return err
 	}
