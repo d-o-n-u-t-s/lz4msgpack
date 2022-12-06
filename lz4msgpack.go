@@ -8,16 +8,18 @@ import (
 )
 
 const (
+	msgpackCodeExt8  byte = 0xc7
+	msgpackCodeExt16 byte = 0xc8
 	msgpackCodeExt32 byte = 0xc9
 	msgpackCodeInt32 byte = 0xd2
 	extCodeLz4       byte = 99
 
-	offsetCodeExt32      = 0
-	offsetExtSize        = 1
-	offsetCodeLz4        = 5
-	offsetCodeInt32      = 6
-	offsetUncompressSize = 7
-	offsetLength         = 11
+	offsetMessagePackCode = 0
+	offsetExtSize         = 1
+	offsetCodeLz4         = 5
+	offsetCodeInt32       = 6
+	offsetUncompressSize  = 7
+	offsetLength          = 11
 )
 
 // Marshal returns bytes that is the MessagePack encoded and lz4 compressed.
@@ -46,7 +48,7 @@ func compress(data []byte) ([]byte, error) {
 		return data, err
 	}
 
-	buf[offsetCodeExt32] = msgpackCodeExt32
+	buf[offsetMessagePackCode] = msgpackCodeExt32
 	binary.BigEndian.PutUint32(buf[offsetExtSize:offsetCodeLz4], (uint32)(length+offsetCodeLz4))
 	buf[offsetCodeLz4] = extCodeLz4
 	buf[offsetCodeInt32] = msgpackCodeInt32
@@ -70,13 +72,29 @@ func UnmarshalAsArray(data []byte, v interface{}) error {
 }
 
 func unmarshal(data []byte, v interface{}, unmarshaler func([]byte, interface{}) error) error {
-	if data[offsetCodeExt32] != msgpackCodeExt32 || data[offsetCodeLz4] != extCodeLz4 {
+	typeCodeOffset := getTypeCodeOffset(data[offsetMessagePackCode])
+	if data[typeCodeOffset] != extCodeLz4 {
 		return unmarshaler(data, v)
 	}
-	buf := make([]byte, binary.BigEndian.Uint32(data[offsetUncompressSize:offsetLength]))
-	_, err := lz4.UncompressBlock(data[offsetLength:], buf)
+	bufStartOffset := typeCodeOffset + 2
+	buffEndOffset := bufStartOffset + 4
+	buf := make([]byte, binary.BigEndian.Uint32(data[bufStartOffset:buffEndOffset]))
+	_, err := lz4.UncompressBlock(data[buffEndOffset:], buf)
 	if err != nil {
 		return err
 	}
 	return unmarshaler(buf, v)
+}
+
+func getTypeCodeOffset(messagePackCode byte) int {
+	// See https://github.com/msgpack/msgpack/blob/master/spec.md#ext-format-family
+	switch messagePackCode {
+	case msgpackCodeExt8:
+		return 2
+	case msgpackCodeExt16:
+		return 3
+	case msgpackCodeExt32:
+		return 5
+	}
+	return 1
 }
