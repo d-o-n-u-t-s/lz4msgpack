@@ -1,12 +1,14 @@
 package lz4msgpack_test
 
 import (
+	"encoding/binary"
 	"math"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/d-o-n-u-t-s/lz4msgpack"
+	"github.com/pierrec/lz4/v4"
 	"github.com/shamaton/msgpack/v2"
 )
 
@@ -71,4 +73,55 @@ func Test(t *testing.T) {
 	tester("   msgpack.MarshalAsArray", msgpack.MarshalAsArray, msgpack.UnmarshalAsArray)
 	tester("       lz4msgpack.Marshal", lz4msgpack.Marshal, lz4msgpack.Unmarshal)
 	tester("lz4msgpack.MarshalAsArray", lz4msgpack.MarshalAsArray, lz4msgpack.UnmarshalAsArray)
+}
+
+func TestExtUnmarshal(t *testing.T) {
+	data := "qwertyuioppasdfghjkl;'zxcvbnm,../"
+	msgpackData, err := msgpack.Marshal(data)
+	if err != nil {
+		t.Fatal("msgpack", err)
+	}
+
+	lz4MaxLength := lz4.CompressBlockBound(len(msgpackData))
+	lz4Data := make([]byte, lz4MaxLength)
+	lz4Length, _ := lz4.CompressBlockHC(msgpackData, lz4Data, 0, nil, nil)
+	if err != nil {
+		t.Fatal("lz4", err)
+	}
+
+	// ext8
+	ext8 := []byte{0xc7, 0, 99, 0xd2}
+	ext8 = binary.BigEndian.AppendUint32(ext8, uint32(lz4MaxLength))
+	ext8 = append(ext8, lz4Data...)
+	var ext8umarshaled string
+	if err = lz4msgpack.Unmarshal(ext8[:8+lz4Length], &ext8umarshaled); err != nil {
+		t.Fatal("unmarshal", err)
+	}
+	if !reflect.DeepEqual(data, ext8umarshaled) {
+		t.Fatal("error")
+	}
+
+	// ext16
+	ext16 := []byte{0xc8, 0, 0, 99, 0xd2}
+	ext16 = binary.BigEndian.AppendUint32(ext16, uint32(lz4MaxLength))
+	ext16 = append(ext16, lz4Data...)
+	var ext16umarshaled string
+	if err = lz4msgpack.Unmarshal(ext16[:9+lz4Length], &ext16umarshaled); err != nil {
+		t.Fatal("unmarshal", err)
+	}
+	if !reflect.DeepEqual(data, ext16umarshaled) {
+		t.Fatal("error")
+	}
+
+	// ext32
+	ext32 := []byte{0xc9, 0, 0, 0, 0, 99, 0xd2}
+	ext32 = binary.BigEndian.AppendUint32(ext32, uint32(lz4MaxLength))
+	ext32 = append(ext32, lz4Data...)
+	var ext32umarshaled string
+	if err = lz4msgpack.Unmarshal(ext32[:11+lz4Length], &ext32umarshaled); err != nil {
+		t.Fatal("unmarshal", err)
+	}
+	if !reflect.DeepEqual(data, ext32umarshaled) {
+		t.Fatal("error")
+	}
 }

@@ -72,30 +72,29 @@ func UnmarshalAsArray(data []byte, v interface{}) error {
 }
 
 func unmarshal(data []byte, v interface{}, unmarshaler func([]byte, interface{}) error) error {
-	typeCodeOffset := getTypeCodeOffset(data[offsetMessagePackCode])
+	// see https://github.com/msgpack/msgpack/blob/master/spec.md#ext-format-family
+	var typeCodeOffset byte
+	switch data[offsetMessagePackCode] {
+	case msgpackCodeExt8:
+		typeCodeOffset = 2
+	case msgpackCodeExt16:
+		typeCodeOffset = 3
+	case msgpackCodeExt32:
+		typeCodeOffset = 5
+	default:
+		typeCodeOffset = 1
+	}
+
 	if data[typeCodeOffset] != extCodeLz4 {
 		return unmarshaler(data, v)
 	}
-	// typecode,messagePackCode:int32,dataLength(int32) で入ってる
-	lz4DataLengthOffset := typeCodeOffset + 2
-	lz4DataLengthEndOffset := lz4DataLengthOffset + 4
-	buf := make([]byte, binary.BigEndian.Uint32(data[lz4DataLengthOffset:lz4DataLengthEndOffset]))
-	_, err := lz4.UncompressBlock(data[lz4DataLengthEndOffset:], buf)
+
+	// typeCode | msgpackCodeInt32 | lz4DataLength(uint32)の順で格納されている
+	lz4DataLength := binary.BigEndian.Uint32(data[typeCodeOffset+2 : typeCodeOffset+6])
+	buf := make([]byte, lz4DataLength)
+	length, err := lz4.UncompressBlock(data[typeCodeOffset+6:], buf)
 	if err != nil {
 		return err
 	}
-	return unmarshaler(buf, v)
-}
-
-func getTypeCodeOffset(messagePackCode byte) int {
-	// See https://github.com/msgpack/msgpack/blob/master/spec.md#ext-format-family
-	switch messagePackCode {
-	case msgpackCodeExt8:
-		return 2
-	case msgpackCodeExt16:
-		return 3
-	case msgpackCodeExt32:
-		return 5
-	}
-	return 1
+	return unmarshaler(buf[:length], v)
 }
