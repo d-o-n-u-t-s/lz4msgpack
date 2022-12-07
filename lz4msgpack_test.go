@@ -95,10 +95,10 @@ func TestExtUnmarshal(t *testing.T) {
 	ext8 = append(ext8, lz4Data...)
 	var ext8umarshaled string
 	if err = lz4msgpack.Unmarshal(ext8[:8+lz4Length], &ext8umarshaled); err != nil {
-		t.Fatal("unmarshal", err)
+		t.Fatal("unmarshal ext8", err)
 	}
 	if !reflect.DeepEqual(data, ext8umarshaled) {
-		t.Fatal("error")
+		t.Fatal("error ext8")
 	}
 
 	// ext16
@@ -107,10 +107,10 @@ func TestExtUnmarshal(t *testing.T) {
 	ext16 = append(ext16, lz4Data...)
 	var ext16umarshaled string
 	if err = lz4msgpack.Unmarshal(ext16[:9+lz4Length], &ext16umarshaled); err != nil {
-		t.Fatal("unmarshal", err)
+		t.Fatal("unmarshal ext16", err)
 	}
 	if !reflect.DeepEqual(data, ext16umarshaled) {
-		t.Fatal("error")
+		t.Fatal("error ext16")
 	}
 
 	// ext32
@@ -119,9 +119,9 @@ func TestExtUnmarshal(t *testing.T) {
 	ext32 = append(ext32, lz4Data...)
 	var ext32umarshaled string
 	if err = lz4msgpack.Unmarshal(ext32[:11+lz4Length], &ext32umarshaled); err != nil {
-		t.Fatal("unmarshal", err)
+		t.Fatal("unmarshal ext32", err)
 	}
 	if !reflect.DeepEqual(data, ext32umarshaled) {
-		t.Fatal("error")
+		t.Fatal("error ext32")
 	}
 }
