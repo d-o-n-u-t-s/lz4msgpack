@@ -8,16 +8,18 @@ import (
 )
 
 const (
+	msgpackCodeExt8  byte = 0xc7
+	msgpackCodeExt16 byte = 0xc8
 	msgpackCodeExt32 byte = 0xc9
 	msgpackCodeInt32 byte = 0xd2
 	extCodeLz4       byte = 99
 
-	offsetCodeExt32      = 0
-	offsetExtSize        = 1
-	offsetCodeLz4        = 5
-	offsetCodeInt32      = 6
-	offsetUncompressSize = 7
-	offsetLength         = 11
+	offsetMessagePackCode = 0
+	offsetExtSize         = 1
+	offsetCodeLz4         = 5
+	offsetCodeInt32       = 6
+	offsetUncompressSize  = 7
+	offsetLength          = 11
 )
 
 // Marshal returns bytes that is the MessagePack encoded and lz4 compressed.
@@ -46,7 +48,7 @@ func compress(data []byte) ([]byte, error) {
 		return data, err
 	}
 
-	buf[offsetCodeExt32] = msgpackCodeExt32
+	buf[offsetMessagePackCode] = msgpackCodeExt32
 	binary.BigEndian.PutUint32(buf[offsetExtSize:offsetCodeLz4], (uint32)(length+offsetCodeLz4))
 	buf[offsetCodeLz4] = extCodeLz4
 	buf[offsetCodeInt32] = msgpackCodeInt32
@@ -70,13 +72,29 @@ func UnmarshalAsArray(data []byte, v interface{}) error {
 }
 
 func unmarshal(data []byte, v interface{}, unmarshaler func([]byte, interface{}) error) error {
-	if data[offsetCodeExt32] != msgpackCodeExt32 || data[offsetCodeLz4] != extCodeLz4 {
+	// see https://github.com/msgpack/msgpack/blob/master/spec.md#ext-format-family
+	var typeCodeOffset byte
+	switch data[offsetMessagePackCode] {
+	case msgpackCodeExt8:
+		typeCodeOffset = 2
+	case msgpackCodeExt16:
+		typeCodeOffset = 3
+	case msgpackCodeExt32:
+		typeCodeOffset = 5
+	default:
+		typeCodeOffset = 1
+	}
+
+	if data[typeCodeOffset] != extCodeLz4 {
 		return unmarshaler(data, v)
 	}
-	buf := make([]byte, binary.BigEndian.Uint32(data[offsetUncompressSize:offsetLength]))
-	_, err := lz4.UncompressBlock(data[offsetLength:], buf)
+
+	// typeCode | msgpackCodeInt32 | lz4DataLength(uint32)の順で格納されている
+	lz4DataLength := binary.BigEndian.Uint32(data[typeCodeOffset+2 : typeCodeOffset+6])
+	buf := make([]byte, lz4DataLength)
+	length, err := lz4.UncompressBlock(data[typeCodeOffset+6:], buf)
 	if err != nil {
 		return err
 	}
-	return unmarshaler(buf, v)
+	return unmarshaler(buf[:length], v)
 }
